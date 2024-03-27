@@ -266,8 +266,8 @@ ifeq ($(LAB),util)
 endif
 
 
-fs.img: mkfs/mkfs README kittycat $(UEXTRA) $(UPROGS)
-	mkfs/mkfs fs.img README kittycat $(UEXTRA) $(UPROGS)
+fs.img: mkfs/mkfs README kittycat.txt $(UEXTRA) $(UPROGS)
+	mkfs/mkfs fs.img README kittycat.txt $(UEXTRA) $(UPROGS)
 
 -include kernel/*.d user/*.d
 
