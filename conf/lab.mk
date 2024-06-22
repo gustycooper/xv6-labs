@@ -1,1 +1,1 @@
-LAB=riscv
+LAB=pgtbl
