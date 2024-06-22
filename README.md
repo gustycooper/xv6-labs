@@ -1,5 +1,5 @@
 # UMW CPSC 405 Xv6 Labs
-Labs of UMW ***Operating Systems***
+Labs accompanying UMW CPSC 405 - ***Operating Systems***
 
 ## Introduction
 Design and implementation of operating systems, and their use as a foundation for systems programming. Topics include virtual memory; file systems; threads; context switches; kernels; interrupts; system calls; interprocess communication; coordination, and interaction between software and hardware. A multi-processor operating system for RISC-V, xv6, is used to illustrate these topics. Individual laboratory assignments involve extending the xv6 operating system, for example to support sophisticated virtual memory features and networking.
@@ -7,7 +7,7 @@ Design and implementation of operating systems, and their use as a foundation fo
 You may wonder why we are studying xv6, an operating system that resembles Unix v6, instead of the latest and greatest version of Linux, Windows, or BSD Unix. xv6 is big enough to illustrate the basic design and implementation ideas in operating systems. On the other hand, xv6 is far smaller than any modern production O/S, and correspondingly easier to understand. xv6 has a structure similar to many modern operating systems; once you've explored xv6 you will find that much is familiar inside kernels such as Linux.
 
 ## Websites
-+ schedule: https://gusty.bike/xv6index.html
++ CPSC 405 Xv6 Website: https://gusty.bike/xv6index.html
 + xv6 on MIT's GitHub: https://github.com/mit-pdos/xv6-riscv
 + xv6 book on MIT's website: https://pdos.csail.mit.edu/6.828/2022/xv6/book-riscv-rev3.pdf
 
