@@ -188,6 +188,7 @@ UPROGS=\
 	$U/_grind\
 	$U/_wc\
 	$U/_zombie\
+	$U/_alarmtest\
 
 
 
@@ -266,7 +267,7 @@ fs.img: mkfs/mkfs README $(UEXTRA) $(UPROGS)
 -include kernel/*.d user/*.d
 
 clean:
-	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg xv6.out* \
+	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*/*.o */*.d */*.asm */*.sym \
 	$U/initcode $U/initcode.out $K/kernel fs.img \
 	mkfs/mkfs .gdbinit \
