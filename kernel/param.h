@@ -9,5 +9,11 @@
 #define MAXOPBLOCKS  10  // max # of blocks any FS op writes
 #define LOGSIZE      (MAXOPBLOCKS*3)  // max data blocks in on-disk log
 #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
-#define FSSIZE       2000  // size of file system in blocks
-#define MAXPATH      128   // maximum file path name
+#define FSSIZE     2000  // size of file system in blocks
+#define MAXPATH     128  // maximum file path name
+#define SCHED_RR      0  // Round-Robin Scheduler
+#define SCHED_PRIOR   1  // Priority-Based Scheduler
+#define DEF_PRIOR     0  // Default proc priority
+#define HIST_SIZE    64  // Size of circular history buffer of scheduled procs
+
+

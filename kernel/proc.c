@@ -15,6 +15,24 @@ struct proc *initproc;
 int nextpid = 1;
 struct spinlock pid_lock;
 
+// scheduler_policy selects either SCHED_RR or SCHED_PRIOR
+//int scheduler_policy = SCHED_RR;
+int scheduler_policy = SCHED_PRIOR;
+
+struct prochist prochist[HIST_SIZE]; // history of procs scheduled
+int hist_i = 0, prev_hist_i = 0; // indices into prochist[]
+int hist_s = 0;       // start index in prochist[] to display
+int hist_new = 0;     // num of context switches to a new proc, not shell
+// NOTE: hist_new is also total number of entries entered into prochist[]
+// which of course gets circulared when greater the HIST_SIZE
+int hist_old = 0;     // num of context switches from procA to procA
+int hist_run = 0;     // num of context switches to a RUNNABLE proc
+int hist_sch = 0;     // num of iterations of scheduler()'s outer loop.
+// NOTE: On round robin, hist_sch does not count the number of
+// iterations in the inner for(p = proc; p < &proc[NPROC]; p++) loop.
+int hist_sh = 0;     // num of context switches to shell
+struct spinlock hist_lock;
+
 extern void forkret(void);
 static void freeproc(struct proc *p);
 
@@ -33,7 +51,7 @@ void
 proc_mapstacks(pagetable_t kpgtbl)
 {
   struct proc *p;
-  
+
   for(p = proc; p < &proc[NPROC]; p++) {
     char *pa = kalloc();
     if(pa == 0)
@@ -48,9 +66,10 @@ void
 procinit(void)
 {
   struct proc *p;
-  
+
   initlock(&pid_lock, "nextpid");
   initlock(&wait_lock, "wait_lock");
+  initlock(&hist_lock, "hist_lock");
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
       p->state = UNUSED;
@@ -93,7 +112,7 @@ int
 allocpid()
 {
   int pid;
-  
+
   acquire(&pid_lock);
   pid = nextpid;
   nextpid = nextpid + 1;
@@ -124,6 +143,7 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->priority = DEF_PRIOR;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -145,6 +165,11 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
+
+  p->interval = 0;
+  p->handler = 0;
+  p->ticks = 0;
+  p->regs = 0;
 
   return p;
 }
@@ -169,6 +194,11 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  p->priority = 0;
+  p->interval = 0;
+  p->handler = 0;
+  p->ticks = 0;
+  p->regs = 0;
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -236,7 +266,7 @@ userinit(void)
 
   p = allocproc();
   initproc = p;
-  
+
   // allocate one user page and copy initcode's instructions
   // and data into it.
   uvmfirst(p->pagetable, initcode, sizeof(initcode));
@@ -288,6 +318,8 @@ fork(void)
     return -1;
   }
 
+  // Copy mask for syscall trace
+  np->mask = p->mask;
   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
     freeproc(np);
@@ -309,6 +341,61 @@ fork(void)
   np->cwd = idup(p->cwd);
 
   safestrcpy(np->name, p->name, sizeof(p->name));
+
+  pid = np->pid;
+
+  release(&np->lock);
+
+  acquire(&wait_lock);
+  np->parent = p;
+  release(&wait_lock);
+
+  acquire(&np->lock);
+  np->state = RUNNABLE;
+  release(&np->lock);
+
+  return pid;
+}
+
+// Just like fork, but names the new proc with the arg
+// spoon is called from sys_spoon in sys_proc.c
+// Create a new process, copying the parent.
+// Sets up child kernel stack to return as if from fork() system call.
+int
+spoon(char *name)
+{
+  int i, pid;
+  struct proc *np;
+  struct proc *p = myproc();
+
+  // Allocate process.
+  if((np = allocproc()) == 0){
+    return -1;
+  }
+
+  // Copy mask for syscall trace
+  np->mask = p->mask;
+  // Copy user memory from parent to child.
+  if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
+    freeproc(np);
+    release(&np->lock);
+    return -1;
+  }
+  np->sz = p->sz;
+
+  // copy saved user registers.
+  *(np->trapframe) = *(p->trapframe);
+
+  // Cause fork to return 0 in the child.
+  np->trapframe->a0 = 0;
+
+  // increment reference counts on open file descriptors.
+  for(i = 0; i < NOFILE; i++)
+    if(p->ofile[i])
+      np->ofile[i] = filedup(p->ofile[i]);
+  np->cwd = idup(p->cwd);
+
+  safestrcpy(np->name, name, sizeof(p->name));
 
   pid = np->pid;
 
@@ -372,7 +459,7 @@ exit(int status)
 
   // Parent might be sleeping in wait().
   wakeup(p->parent);
-  
+
   acquire(&p->lock);
 
   p->xstate = status;
@@ -428,10 +515,37 @@ wait(uint64 addr)
       release(&wait_lock);
       return -1;
     }
-    
+
     // Wait for a child to exit.
     sleep(p, &wait_lock);  //DOC: wait-sleep
   }
+}
+
+// Maintain history of scheduled procs
+void
+proc_hist(struct proc *p)
+{
+  // Update prochist if not moving same proc from RUNNABLE to RUNNING
+  acquire(&hist_lock);
+  hist_run++;
+  if (strncmp(p->name, "sh", sizeof(p->name))) { // if proc is not shell
+    if (prochist[prev_hist_i].pid != p->pid){ 
+      prochist[hist_i].pid = p->pid;
+      prochist[hist_i].priority = p->priority;
+      prochist[hist_i].cpuid = cpuid();
+      safestrcpy(prochist[hist_i].name, p->name, sizeof(p->name));
+      prev_hist_i = hist_i;
+      hist_i = (hist_i + 1) % HIST_SIZE;
+      hist_new++;
+      if (hist_new > HIST_SIZE)
+        hist_s = hist_new % HIST_SIZE;
+    }
+    else
+      hist_old++;
+  }
+  else
+    hist_sh++;
+  release(&hist_lock);
 }
 
 // Per-CPU process scheduler.
@@ -445,28 +559,55 @@ void
 scheduler(void)
 {
   struct proc *p;
+// prior schd uses start to perform RR on equal highest priorities
+  struct proc *start = proc;
   struct cpu *c = mycpu();
-  
+
   c->proc = 0;
   for(;;){
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
 
-    for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
+    hist_sch++;
+    if (scheduler_policy == SCHED_RR) {
+      for(p = proc; p < &proc[NPROC]; p++) {
+        acquire(&p->lock);
+        if(p->state == RUNNABLE) {
+          proc_hist(p);
 
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
+          // Switch to chosen process.  It is the process's job
+          // to release its lock and then reacquire it
+          // before jumping back to us.
+          p->state = RUNNING;
+          c->proc = p;
+          swtch(&c->context, &p->context);
+
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+        }
+        release(&p->lock);
       }
-      release(&p->lock);
+    }
+    else if (scheduler_policy == SCHED_PRIOR) {
+      for(p = proc; p < &proc[NPROC]; p++) {
+        acquire(&p->lock);
+        if(p->state == RUNNABLE) {
+          proc_hist(p);
+
+          // Switch to chosen process.  It is the process's job
+          // to release its lock and then reacquire it
+          // before jumping back to us.
+          p->state = RUNNING;
+          c->proc = p;
+          swtch(&c->context, &p->context);
+
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+        }
+        release(&p->lock);
+      }
     }
   }
 }
@@ -536,7 +677,7 @@ void
 sleep(void *chan, struct spinlock *lk)
 {
   struct proc *p = myproc();
-  
+
   // Must acquire p->lock in order to
   // change p->state and then call sched.
   // Once we hold p->lock, we can be
@@ -615,7 +756,7 @@ int
 killed(struct proc *p)
 {
   int k;
-  
+
   acquire(&p->lock);
   k = p->killed;
   release(&p->lock);
@@ -677,7 +818,34 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    printf("%d %s %s", p->pid, state, p->name);
+    printf("%d %d %s %s", p->pid, p->priority, state, p->name);
     printf("\n");
   }
+}
+
+// Display process history to console
+void
+prochistory()
+{
+  printf("Tmr Rupts: %d, Sch Loops: %d, Swtch Run: %d, Swtch New: %d, Switch Old: %d, Swtch sh: %d\n", ticks, hist_sch, hist_run, hist_new, hist_old, hist_sh);
+  int looplimit = hist_new < HIST_SIZE ? hist_new : HIST_SIZE;
+  int j = hist_s;
+  for(int i=0; i<looplimit; i++){
+    printf("%d: %d %d %s %d", i, prochist[j].cpuid, prochist[j].pid, prochist[j].name, prochist[j].priority);
+    printf("\n");
+    j = (j + 1) % HIST_SIZE;
+  }
+}
+
+// get the number of processes whose state is not UNUSED
+int
+get_nproc()
+{
+  int n = 0;
+  for(int i=0; i<NPROC; i++){
+    if(proc[i].state != UNUSED){
+      n++;
+    }
+  }
+  return n;
 }

@@ -63,6 +63,7 @@ void            ramdiskrw(struct buf*);
 void*           kalloc(void);
 void            kfree(void *);
 void            kinit(void);
+int             get_freemem(void);
 
 // log.c
 void            initlog(int, struct superblock*);
@@ -77,6 +78,7 @@ int             piperead(struct pipe*, uint64, int);
 int             pipewrite(struct pipe*, uint64, int);
 
 // printf.c
+void            backtrace(void);
 void            printf(char*, ...);
 void            panic(char*) __attribute__((noreturn));
 void            printfinit(void);
@@ -106,6 +108,10 @@ void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
+int             get_nproc(void);
+int             ps(void);
+void            prochistory(void);
+int             spoon(char*);
 
 // swtch.S
 void            swtch(struct context*, struct context*);
