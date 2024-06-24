@@ -62,7 +62,7 @@ endif
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
-#TOOLPREFIX =
+#TOOLPREFIX = 
 
 # Try to infer the correct TOOLPREFIX if not set
 ifndef TOOLPREFIX
@@ -224,11 +224,20 @@ $U/_uthread: $U/uthread.o $U/uthread_switch.o $(ULIB)
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $U/_uthread $U/uthread.o $U/uthread_switch.o $(ULIB)
 	$(OBJDUMP) -S $U/_uthread > $U/uthread.asm
 
-ph: notxv6/ph.c
-	gcc -o ph -g -O2 $(XCFLAGS) notxv6/ph.c -pthread
+hash_bad: notxv6/hash_bad.c
+	gcc -o hash_bad -g -O2 $(XCFLAGS) notxv6/hash_bad.c -pthread
 
-barrier: notxv6/barrier.c
-	gcc -o barrier -g -O2 $(XCFLAGS) notxv6/barrier.c -pthread
+hash_good: notxv6/hash_good.c
+	gcc -o hash_good -g -O2 $(XCFLAGS) notxv6/hash_good.c -pthread
+
+barrier_cv: notxv6/barrier_cv.c
+	gcc -o barrier_cv -g -O2 $(XCFLAGS) notxv6/barrier_cv.c -pthread
+
+barrier_sem: notxv6/barrier_sem.c
+	gcc -o barrier_sem -g -O2 $(XCFLAGS) notxv6/barrier_sem.c -pthread
+
+thread_msgq: notxv6/mainmsgq.c notxv6/msgq.c notxv6/msgq.h
+	gcc -o msgq -g -O2 $(XCFLAGS) notxv6/mainmsgq.c notxv6/msgq.c -pthread
 endif
 
 ifeq ($(LAB),pgtbl)
@@ -265,14 +274,14 @@ fs.img: mkfs/mkfs README $(UEXTRA) $(UPROGS)
 
 -include kernel/*.d user/*.d
 
-clean:
-	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg xv6.out* \
+clean: 
+	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*/*.o */*.d */*.asm */*.sym \
 	$U/initcode $U/initcode.out $K/kernel fs.img \
 	mkfs/mkfs .gdbinit \
         $U/usys.S \
 	$(UPROGS) \
-	ph barrier
+	hash_bad hash_good barrier_cv barrier_sem
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
