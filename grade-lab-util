@@ -5,6 +5,25 @@ from gradelib import *
 
 r = Runner(save("xv6.out"))
 
+@test(4, "answers-util.txt")
+def test_answers():
+    # just a simple sanity check, will be graded manually
+    check_answers("answers-util.txt")
+
+@test(5, "kittycat, no arguments")
+def test_kittycat_no_args():
+    r.run_qemu(shell_script([
+        'kittycat'
+    ]))
+    r.match('This is the text in the file kittycat.')
+
+@test(5, "kittycat, with argument")
+def test_kittycat_no_args():
+    r.run_qemu(shell_script([
+        'kittycat gusty'
+    ]))
+    r.match('kittycat: No args allowed')
+
 @test(5, "sleep, no arguments")
 def test_sleep_no_args():
     r.run_qemu(shell_script([
@@ -12,7 +31,7 @@ def test_sleep_no_args():
     ]))
     r.match(no=["sleep does not work", "exec .* failed", "$ sleep\n$"])
 
-@test(5, "sleep, returns")
+@test(10, "sleep, returns")
 def test_sleep_no_args():
     r.run_qemu(shell_script([
         'sleep',
@@ -20,7 +39,7 @@ def test_sleep_no_args():
     ]))
     r.match('^OK$', no=["sleep does not work", "exec .* failed", "$ sleep\n$"])
 
-@test(10, "sleep, makes syscall")
+@test(5, "sleep, makes syscall")
 def test_sleep():
     r.run_qemu(shell_script([
         'sleep 10',
@@ -28,14 +47,14 @@ def test_sleep():
     ]), stop_breakpoint('sys_sleep'))
     r.match('\\$ sleep 10', no=['FAIL'])
 
-@test(20, "pingpong")
+@test(15, "pingpong")
 def test_pingpong():
     r.run_qemu(shell_script([
         'pingpong', 'echo OK'
     ]))
     r.match('^\\d+: received ping$', '^\\d+: received pong$', '^OK$')
 
-@test(20, "primes")
+@test(15, "primes")
 def test_primes():
     r.run_qemu(shell_script([
         'primes', 'echo OK'
@@ -70,7 +89,7 @@ def test_find_recursive():
             './%s/%s/%s' % (dirs[0], dirs[1], needle),
             './%s/%s' % (dirs[2], needle))
 
-@test(19, "xargs")
+@test(15, "xargs")
 def test_xargs():
     r.run_qemu(shell_script([
         'sh < xargstest.sh',
