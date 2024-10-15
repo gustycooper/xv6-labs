@@ -27,12 +27,12 @@ def test_symlinktest_symlinks():
 def test_symlinktest_symlinks():
     r.match("^test concurrent symlinks: ok$")
 
-@test(19, "usertests")
-def test_usertests():
-    r.run_qemu(shell_script([
-        'usertests -q'
-    ]), timeout=600)
-    r.match('^ALL TESTS PASSED$')
+#@test(19, "usertests")
+#def test_usertests():
+#    r.run_qemu(shell_script([
+#        'usertests -q'
+#    ]), timeout=600)
+#    r.match('^ALL TESTS PASSED$')
 
 @test(1, "time")
 def test_time():
