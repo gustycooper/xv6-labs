@@ -560,7 +560,7 @@ scheduler(void)
 {
   struct proc *p;
 // prior schd uses start to perform RR on equal highest priorities
-  struct proc *start = proc;
+//  struct proc *start = proc;
   struct cpu *c = mycpu();
 
   c->proc = 0;

@@ -20,14 +20,4 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
-#define SYS_trace  22
-#define SYS_sysinfo 23
-#define SYS_rseed  24
-#define SYS_rinter 25
-#define SYS_ps     26
-#define SYS_sigalarm 27
-#define SYS_sigreturn 28
-#define SYS_prochist 29
-#define SYS_getpriority 30
-#define SYS_setpriority 31
-#define SYS_spoon 32
+#define SYS_prochist 22

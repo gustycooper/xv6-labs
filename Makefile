@@ -132,11 +132,10 @@ UPROGS=\
 	$U/_grind\
 	$U/_wc\
 	$U/_zombie\
-	$U/_prochist\
 	$U/_testschd
 
-fs.img: mkfs/mkfs README kittycat.txt $(UPROGS)
-	mkfs/mkfs fs.img README kittycat.txt $(UPROGS)
+fs.img: mkfs/mkfs README $(UPROGS)
+	mkfs/mkfs fs.img README $(UPROGS)
 
 -include kernel/*.d user/*.d
 
