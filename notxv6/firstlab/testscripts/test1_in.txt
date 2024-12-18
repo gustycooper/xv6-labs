@@ -1,0 +1,2 @@
+# printprocs with only kernel proc
+printprocs

@@ -1,0 +1,7 @@
+# fork 5 procs w/ diff prior and 3 parents
+fork Gusty 5 init_process
+fork Zac 3 Gusty
+fork Emily 10 Gusty
+fork Jeremy 7 Gusty
+fork Coletta 1 Jeremy
+printprocs

@@ -1,0 +1,3 @@
+procs in queue:
+pname: init_process, pid: 1024, ppid: 1024, priority: 0, state: RUNNABLE
+
