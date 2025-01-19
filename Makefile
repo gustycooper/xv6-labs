@@ -190,6 +190,8 @@ UPROGS=\
 	$U/_zombie\
 	$U/_kittycat\
 	$U/_sleep\
+	$U/_forkexec\
+	$U/_numbers\
 	$U/_pingpong\
 	$U/_primes\
 	$U/_find\
